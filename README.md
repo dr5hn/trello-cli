@@ -24,6 +24,8 @@ npm install -g @dr5hn/trello-cli
 
 ## Quickstart
 
+First-time setup needs a Trello **API key**, **user token**, and **board ID** — see [Auth setup](#auth-setup) for how to obtain them.
+
 ```bash
 trello-cli init                    # interactive: API key, token, board, scaffolding
 trello-cli cards list --label ww-ready --not-label intern-ok
@@ -104,13 +106,65 @@ trello-cli board summary | jq '{cards: .totalCards, ready: (.labels[] | select(.
 
 ## Auth setup
 
-`trello-cli init` walks you through this interactively:
+You need three values: an **API key**, a **user token**, and a **board ID**. Trello's current flow requires creating a Power-Up first — the legacy `trello.com/app-key` page was retired by Atlassian.
 
-1. Get an **API key** from [https://trello.com/app-key](https://trello.com/app-key)
-2. Authorize the CLI to get a **token** (URL printed during init)
-3. Pick the **board** to use (interactive menu, or pass `--board-id`)
+### 1. Get an API key
 
-Resulting `~/.config/trello-cli/auth.json` (chmod 600):
+1. Sign in to Trello, then visit **[https://trello.com/power-ups/admin](https://trello.com/power-ups/admin)**.
+2. Click **"New"** and create a Power-Up. The fields don't have to be meaningful for CLI use:
+   - **Name**: `trello-cli` (or anything)
+   - **Workspace**: pick any workspace you belong to
+   - **Iframe connector URL**: leave blank or use `https://example.com`
+   - **Author / email / support contact**: your own
+3. After creation, open the Power-Up and go to the **API Key** tab.
+4. Click **"Generate a new API Key"** and accept the prompt. Copy the key.
+
+### 2. Generate a user token
+
+On the same API Key page, click the hyperlinked **"Token"** next to your API key. This opens the OAuth-style authorization screen — approve it and Trello returns a token.
+
+Or build the URL yourself (useful for scripts):
+
+```
+https://trello.com/1/authorize?expiration=never&name=trello-cli&scope=read,write&response_type=token&key=YOUR_API_KEY
+```
+
+Replace `YOUR_API_KEY`, open the URL, approve, and copy the token from the resulting page.
+
+> **Heads up:** the token is a user credential with the scope you just granted (`read,write` above). Treat it like a password. `expiration=never` is convenient for a worker; swap to `1day` / `30days` if you'd rather rotate.
+
+### 3. Find your board ID
+
+Open the board in Trello. The URL looks like:
+
+```
+https://trello.com/b/ABCD1234/my-board
+         ^^^^^^^^^^^^^^^^^^^^^^^
+         this 8-char segment is the board ID
+```
+
+Alternatively, append `.json` to any board URL to see the full ID and metadata.
+
+### 4. Wire it in
+
+Interactive (recommended for first-time setup):
+
+```bash
+trello-cli init                   # prompts for key, token, board, plus scaffolding
+# or, if you only want auth without scaffolding:
+trello-cli auth
+```
+
+Scripted (CI, provisioning, Dockerfiles):
+
+```bash
+trello-cli auth \
+  --api-key "$TRELLO_API_KEY" \
+  --token "$TRELLO_TOKEN" \
+  --board-id "$TRELLO_BOARD_ID"
+```
+
+Either path writes `~/.config/trello-cli/auth.json` (chmod 600, atomic):
 
 ```json
 {
@@ -122,6 +176,14 @@ Resulting `~/.config/trello-cli/auth.json` (chmod 600):
 ```
 
 To override the path: `export TRELLO_CLI_AUTH_PATH=/some/where/auth.json` or `export XDG_CONFIG_HOME=/elsewhere`.
+
+### Verify
+
+```bash
+trello-cli board summary          # smoke-tests auth + board access
+```
+
+If you see a `401` / `403`, the token is wrong or was revoked. A `404` on the board ID usually means the token's user can't access that board.
 
 ## Development
 
