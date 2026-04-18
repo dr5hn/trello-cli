@@ -1,7 +1,10 @@
 /**
- * Idempotent setup helpers for the WW-Auto board scaffolding:
+ * Idempotent setup helpers for autonomous-worker board scaffolding:
  *   - The hidden `📊 Internal` list (holds operational metadata cards)
- *   - The pinned `📊 WW Worker Status` card (cross-machine state bridge §5.3)
+ *   - The pinned `📊 WW Worker Status` card (a cross-machine state bridge —
+ *     a worker writes its current state JSON to the card description so a
+ *     cloud-based consumer like a daily-summary cron can read it without
+ *     SSHing into the worker host)
  *
  * Both functions are safe to run repeatedly — they look up by exact-name match
  * before creating. Used by `trello-cli init` and re-runnable as repair tooling.

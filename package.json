@@ -1,7 +1,7 @@
 {
   "name": "@dr5hn/trello-cli",
   "version": "0.1.0",
-  "description": "Generic Trello CLI in TypeScript — built for Webby Wonder Autopilot but consumable from cron, scripts, or humans.",
+  "description": "Generic Trello CLI in TypeScript with rate limiting, atomic card-claim protocol, structured JSON output, and an idempotent setup flow. Designed for autonomous-worker integrations and humans alike.",
   "type": "module",
   "bin": {
     "trello-cli": "./dist/cli.js"
@@ -57,6 +57,8 @@
     "trello",
     "cli",
     "task-management",
-    "webby-wonder"
+    "automation",
+    "atlassian",
+    "kanban"
   ]
 }

@@ -27,7 +27,7 @@ const VERSION = "0.1.0";
 export function buildProgram(): Command {
   const program = new Command()
     .name("trello-cli")
-    .description("Generic Trello CLI used by Webby Wonder Autopilot.")
+    .description("Generic Trello CLI for scripting, automation, and humans.")
     .version(VERSION, "-V, --version", "print version and exit")
     .addOption(
       new Option("-f, --format <mode>", "output format")

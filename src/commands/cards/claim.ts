@@ -2,7 +2,8 @@
  * `trello-cli cards claim` — best-effort 4-step claim protocol (spec §5.1.3).
  *
  * Trello has no compare-and-swap, so this is best-effort assuming a
- * single-worker invariant (enforced upstream by the WW-Auto PID lockfile).
+ * single-worker invariant (consumers must enforce this upstream — e.g. a
+ * PID lockfile or a process manager that allows only one worker per board).
  * Two workers racing would each succeed steps 2-3 in interleaved order; the
  * step-4 re-check catches the loser and rolls back.
  */

@@ -1,10 +1,15 @@
 /**
- * Workflow label definitions for Webby Wonder Autopilot.
- * See spec §5.7 — these 8 labels carry workflow state on every card.
+ * Opinionated workflow label definitions for autonomous-worker integrations.
+ * The 8 `ww-*` and adjacent labels carry workflow state on every card so a
+ * worker process can claim, execute, release, and surface failures using
+ * standard Trello label operations.
  *
  * `ensureLabels()` is idempotent: it lists existing labels, then creates
  * only those missing by exact name match. Returns what was created vs.
  * already-present so the caller can render an honest summary.
+ *
+ * If you don't run a worker, you can ignore this entirely — `labels ensure`
+ * is opt-in.
  */
 
 import { TrelloClient, type TrelloLabel, type TrelloLabelColor } from "../trello-client.js";

@@ -9,10 +9,11 @@
  *   --mine                      → cards assigned to the authed user
  *   --stale-days N              → cards with dateLastActivity older than N days
  *
- * `--tier` (green/yellow/red) is declared on the CLI for spec conformance but
- * deliberately unimplemented in trello-cli for Phase 1 (it would couple this
- * generic CLI to WW-Auto's tier-config.json). Use `--repo` plus client-side
- * filtering for now; tier resolution lives in the WW-Auto worker.
+ * `--tier` (green/yellow/red) is reserved on the CLI but deliberately
+ * unimplemented — wiring it up would require this generic CLI to read a
+ * downstream consumer's tier-mapping config, coupling it to a specific use
+ * case. Use `--repo` instead, and let the consumer resolve tier→repo set on
+ * its own side.
  */
 
 import { type CommandContext, loadContext } from "../../lib/context.js";

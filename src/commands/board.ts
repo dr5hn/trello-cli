@@ -1,8 +1,9 @@
 /**
  * `trello-cli board summary` — counts by list × label, excluding internal lists.
  *
- * Used by the WW-Auto Daily Pulse Routine (spec §5.3) to compose its morning
- * brief. Output shape is intentionally stable; consumers depend on it.
+ * Designed for downstream consumers that compose periodic summaries (e.g. a
+ * morning-brief cron, a Slack digest bot, a status dashboard). Output shape is
+ * intentionally stable so consumers can depend on it.
  */
 
 import { loadContext } from "../lib/context.js";

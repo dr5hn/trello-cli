@@ -1,13 +1,13 @@
 # @dr5hn/trello-cli
 
-Generic Trello command-line interface in TypeScript. Built for the [Webby Wonder Autopilot](../docs/superpowers/specs/2026-04-18-ww-auto-design.md) but consumable from cron, shell scripts, the intern, or humans.
+Generic Trello command-line interface in TypeScript — designed for autonomous-worker integrations, cron jobs, shell scripts, and humans alike.
 
 ## Features
 
 - All HTTP requests rate-limited (token bucket: 25 req/s steady, 100 burst), with exponential backoff on `429` and respect for `Retry-After`
 - Output is JSON by default for piping into `jq`; pass `--format table` for a humans view
 - Auth lives at `~/.config/trello-cli/auth.json` (chmod 600, atomic writes) with optional `XDG_CONFIG_HOME` and `TRELLO_CLI_AUTH_PATH` overrides
-- Best-effort `cards claim` protocol with claim re-check rollback for the WW-Auto worker use case
+- Best-effort `cards claim` protocol with claim re-check rollback for autonomous-worker use cases
 - Idempotent `init`, `labels ensure`, and board scaffolding — safe to re-run
 - ESM (Node 22+), zero `any` in the public API, validated with [Zod](https://zod.dev)
 
@@ -50,7 +50,7 @@ trello-cli board summary
 
 | Command | Purpose |
 |---|---|
-| `trello-cli board summary` | Counts by list × label, excluding lists in `internal_lists` config. Used by Daily Pulse. |
+| `trello-cli board summary` | Counts by list × label, excluding lists in `internal_lists` config. Useful for periodic summary jobs. |
 
 ### Watch (NDJSON streaming)
 
@@ -134,8 +134,8 @@ Tests use `undici`'s `MockAgent` (not `nock`, which doesn't intercept undici's d
 
 The following are designed but deferred:
 
-- `--tier` filter on `cards list` — declared on the CLI for spec conformance but throws a clear error directing to `--repo`. Implementing requires reading `~/.claude/webby-wonder/tier-config.json`, which would couple this CLI to WW-Auto. Worker-side resolution is the cleaner path for now.
-- Cross-process rate-limiter coordination via `proper-lockfile` — included as a dependency, not yet wired. Single-process buckets are sufficient for the Phase 1 single-worker invariant.
+- `--tier` filter on `cards list` — reserved on the CLI but throws a clear error directing to `--repo`. Implementing tier resolution would require this generic CLI to read a downstream consumer's configuration, coupling it to a specific use case. Use `--repo` and let the consumer resolve tier→repo set on its own side.
+- Cross-process rate-limiter coordination via `proper-lockfile` — included as a dependency, not yet wired. Single-process buckets are sufficient for typical single-worker setups.
 
 ## License
 
