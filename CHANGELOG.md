@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-04-18
+
+### Added
+
+- **`trello-cli auth`** — lighter-touch alternative to `init` that just writes `~/.config/trello-cli/auth.json` from credentials, skipping the full board scaffolding (labels ensure, internal list, status card). Useful when you already have an API key + token + board ID and only want to wire them in. Interactive by default; pass `--api-key`, `--token`, `--board-id` for scriptable use. Validates credentials against Trello before writing the file (skip with `--no-validate`); failed validation aborts without touching auth.json.
+
+- **Polished `--help` output** — replaces commander's plain default with a custom renderer modelled on the dr5hn/ccm aesthetic: TRELLO ASCII logo, colour-coded grouped sections (Setup / Cards / Board / Watch / Global options), examples block, and footer with auth path + docs link. Subcommand help (`trello-cli cards --help`) keeps commander's default formatter.
+
+### Fixed
+
+- **CLI silently exited when invoked via global install or `npm link`** — the entrypoint check (`fileURLToPath(import.meta.url) === process.argv[1]`) returned false because npm symlinks the binary, so the symlink path never matched the real path. Running `trello-cli init` (or any subcommand) would exit cleanly with no output.
+
+  Fix: resolve symlinks on both sides via `realpathSync` before comparing. The check now correctly identifies direct invocation regardless of how the binary was installed.
+
+- **Version drift between `package.json` and CLI** — `--version` was hardcoded to `0.1.0` via a `const VERSION = "..."` literal in `src/cli.ts`, so it would lie if the package version was bumped without remembering to update both. Fix: `createRequire` reads `version` from `package.json` at runtime; the two can no longer drift.
+
 ## [0.1.0] — 2026-04-18
 
 Initial public release.
@@ -34,5 +50,6 @@ Initial public release.
 - CI: GitHub Actions matrix on Node 22 + 24, lint + test + build + binary smoke check.
 - Release: GitHub release publish triggers npm publish with provenance signing (id-token: write).
 
-[Unreleased]: https://github.com/dr5hn/trello-cli/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dr5hn/trello-cli/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/dr5hn/trello-cli/releases/tag/v0.1.1
 [0.1.0]: https://github.com/dr5hn/trello-cli/releases/tag/v0.1.0

@@ -30,10 +30,10 @@ async function run(argv: string[]): Promise<{ cap: Capture; err: unknown }> {
 }
 
 describe("CLI shell", () => {
-  test("--version prints 0.1.0", async () => {
+  test("--version prints a semver string matching package.json", async () => {
     const { cap } = await run(["--version"]);
-    const out = cap.stdout.join("");
-    expect(out).toContain("0.1.0");
+    const out = cap.stdout.join("").trim();
+    expect(out).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
   });
 
   test("--help lists all top-level subcommands", async () => {

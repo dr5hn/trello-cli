@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { Command, Option } from "commander";
+import { realpathSync } from "node:fs";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import pc from "picocolors";
+import { authCommand } from "./commands/auth.js";
 import { initCommand } from "./commands/init.js";
 import { labelsEnsureCommand } from "./commands/labels-cmd.js";
 import { listCommand } from "./commands/cards/list.js";
@@ -14,7 +17,76 @@ import { releaseCommand, type ReleaseStatus } from "./commands/cards/release.js"
 import { summaryCommand } from "./commands/board.js";
 import { watchCommand } from "./commands/watch.js";
 
-const VERSION = "0.1.0";
+// Load version from package.json so we never drift between the two.
+// Works for `tsx src/cli.ts` (src/cli.ts → ../package.json) and the built
+// dist/cli.js (dist/cli.js → ../package.json).
+const require = createRequire(import.meta.url);
+const { version: VERSION } = require("../package.json") as { version: string };
+
+const LOGO = `████████╗██████╗ ███████╗██╗     ██╗      ██████╗
+╚══██╔══╝██╔══██╗██╔════╝██║     ██║     ██╔═══██╗
+   ██║   ██████╔╝█████╗  ██║     ██║     ██║   ██║
+   ██║   ██╔══██╗██╔══╝  ██║     ██║     ██║   ██║
+   ██║   ██║  ██║███████╗███████╗███████╗╚██████╔╝
+   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝ ╚═════╝`;
+
+/**
+ * Custom top-level help renderer — replaces commander's plain default with
+ * a grouped, colour-coded layout (matches the dr5hn/ccm aesthetic).
+ * Subcommand help (`trello-cli cards --help`) still uses commander's default.
+ */
+function renderHelp(): string {
+  const lines = [
+    "",
+    pc.green(LOGO),
+    "",
+    `${pc.dim("Generic Trello CLI for scripting, automation, and humans.")}    ${pc.green("v" + VERSION)}`,
+    "",
+    `${pc.bold("Usage:")} trello-cli <command> [options]`,
+    "",
+    pc.bold("Setup:"),
+    "  auth [--api-key X --token Y --board-id Z]  Write auth.json (no board scaffolding)",
+    "  init [--board-id <id>] [--force]           Interactive auth + full board scaffolding",
+    "  labels ensure                              Idempotently create the 8 ww-* labels",
+    "",
+    pc.bold("Cards:"),
+    "  cards list [filters]                  List cards (--label, --not-label, --list, --repo, --mine, --stale-days)",
+    "  cards get <id>                        Full card detail with custom fields",
+    `  cards create --title "..."            Create a card`,
+    "  cards update <id> [...]               Mutate labels / list / custom fields",
+    `  cards comment <id> --body "..."       Add a comment`,
+    "  cards claim <id> [--worker-id <id>]   Best-effort 4-step claim (worker use)",
+    "  cards release <id> --status <s>       State transition (pr-opened|stuck|done)",
+    "",
+    pc.bold("Board:"),
+    "  board summary                         Counts by list × label, excludes internal_lists",
+    "",
+    pc.bold("Watch:"),
+    "  watch [--label X] [--interval 15m]    Long-poll, emit one NDJSON event per new card",
+    "",
+    pc.bold("Global options:"),
+    "  -f, --format <json|table>             Output format (default: json)",
+    "  -v, --verbose                         Verbose logging to stderr",
+    "  -V, --version                         Print version",
+    "  -h, --help                            Show this help",
+    "",
+    pc.bold("Examples:"),
+    "  trello-cli auth                          # interactive — prompts for key, token, board ID",
+    "  trello-cli auth --api-key K --token T --board-id B    # scripted",
+    "  trello-cli init                          # interactive + creates 📊 Internal list + status card",
+    "  trello-cli labels ensure",
+    "  trello-cli cards list --label ww-ready --not-label intern-ok",
+    `  trello-cli cards create --title "Fix homepage typo" --list "Todo"`,
+    `  trello-cli cards comment ABC123 --body "PR opened: github.com/x/y/pull/42"`,
+    "  trello-cli board summary | jq '.totalCards'",
+    "  trello-cli watch --label ww-ready --interval 5m | jq '.card.name'",
+    "",
+    `${pc.dim("Auth:")}  ~/.config/trello-cli/auth.json (chmod 600)`,
+    `${pc.dim("Docs:")}  https://github.com/dr5hn/trello-cli`,
+    "",
+  ];
+  return lines.join("\n");
+}
 
 /**
  * Build the CLI program. Subcommands are registered as stubs in this task;
@@ -38,6 +110,16 @@ export function buildProgram(): Command {
     .showHelpAfterError(true)
     .configureHelp({ sortSubcommands: true });
 
+  // Replace commander's plain top-level help with the polished renderer.
+  // Subcommand help (`trello-cli cards --help`) keeps the default formatter.
+  program.helpInformation = renderHelp;
+
+  // No args → show polished help (commander's default would list subcommands plainly).
+  program.action(() => {
+    process.stdout.write(renderHelp());
+  });
+
+  registerAuth(program);
   registerInit(program);
   registerCards(program);
   registerLabels(program);
@@ -45,6 +127,34 @@ export function buildProgram(): Command {
   registerWatch(program);
 
   return program;
+}
+
+function registerAuth(program: Command): void {
+  program
+    .command("auth")
+    .description("Write auth.json from credentials (lighter than `init` — no board scaffolding).")
+    .option("--api-key <key>", "Trello API key (otherwise prompts)")
+    .option("--token <token>", "Trello token (otherwise prompts)")
+    .option("--board-id <id>", "Trello board ID (otherwise prompts)")
+    .option("--force", "overwrite an existing auth file", false)
+    .option("--no-validate", "skip live credential validation against Trello", false)
+    .action(
+      async (cmdOpts: {
+        apiKey?: string;
+        token?: string;
+        boardId?: string;
+        force?: boolean;
+        validate?: boolean;
+      }) => {
+        await authCommand({
+          ...(cmdOpts.apiKey !== undefined ? { apiKey: cmdOpts.apiKey } : {}),
+          ...(cmdOpts.token !== undefined ? { token: cmdOpts.token } : {}),
+          ...(cmdOpts.boardId !== undefined ? { boardId: cmdOpts.boardId } : {}),
+          force: cmdOpts.force ?? false,
+          validate: cmdOpts.validate !== false,
+        });
+      },
+    );
 }
 
 function registerInit(program: Command): void {
@@ -299,7 +409,18 @@ export function handleError(err: unknown): never {
 }
 
 // Auto-run when executed directly (ESM-safe entrypoint check).
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+// realpathSync resolves symlinks so this works when invoked via the
+// global-install symlink (~/.npm/bin/trello-cli → real dist/cli.js path).
+function isInvokedDirectly(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (isInvokedDirectly()) {
   buildProgram()
     .parseAsync(process.argv)
     .catch(handleError);

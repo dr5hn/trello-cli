@@ -1,6 +1,6 @@
 {
   "name": "@dr5hn/trello-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generic Trello CLI in TypeScript with rate limiting, atomic card-claim protocol, structured JSON output, and an idempotent setup flow. Designed for autonomous-worker integrations and humans alike.",
   "type": "module",
   "bin": {
