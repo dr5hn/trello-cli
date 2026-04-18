@@ -1,5 +1,10 @@
 # @dr5hn/trello-cli
 
+[![npm](https://img.shields.io/npm/v/@dr5hn/trello-cli?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@dr5hn/trello-cli)
+[![CI](https://img.shields.io/github/actions/workflow/status/dr5hn/trello-cli/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/dr5hn/trello-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Node](https://img.shields.io/node/v/@dr5hn/trello-cli?style=flat-square)](https://nodejs.org)
+
 Generic Trello command-line interface in TypeScript — designed for autonomous-worker integrations, cron jobs, shell scripts, and humans alike.
 
 ## Features
