@@ -25,8 +25,12 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
 
+      # Use `npm install` rather than `npm ci` because the package-lock.json
+      # is generated on macOS arm64 and omits Linux-only optional deps
+      # (e.g. @emnapi/core). `npm install` resolves the missing platform deps
+      # at CI time without requiring a cross-platform lockfile.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Lint (tsc --noEmit)
         run: npm run lint
