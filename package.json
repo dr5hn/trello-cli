@@ -1,0 +1,62 @@
+{
+  "name": "@dr5hn/trello-cli",
+  "version": "0.1.0",
+  "description": "Generic Trello CLI in TypeScript — built for Webby Wonder Autopilot but consumable from cron, scripts, or humans.",
+  "type": "module",
+  "bin": {
+    "trello-cli": "./dist/cli.js"
+  },
+  "homepage": "https://github.com/dr5hn/trello-cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dr5hn/trello-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dr5hn/trello-cli/issues"
+  },
+  "author": "Darshan Gada <gadadarshan@gmail.com>",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@inquirer/prompts": "7.4.0",
+    "commander": "13.1.0",
+    "conf": "13.1.0",
+    "picocolors": "1.1.1",
+    "proper-lockfile": "4.1.2",
+    "undici": "7.24.7",
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.13.0",
+    "@types/proper-lockfile": "4.1.4",
+    "@vitest/coverage-v8": "4.1.2",
+    "tsx": "4.21.0",
+    "typescript": "5.7.2",
+    "vitest": "4.1.2"
+  },
+  "license": "MIT",
+  "keywords": [
+    "trello",
+    "cli",
+    "task-management",
+    "webby-wonder"
+  ]
+}
