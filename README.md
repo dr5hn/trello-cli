@@ -48,16 +48,23 @@ trello-cli board summary
 | `trello-cli cards list` | Filtered card listing. See "Filters" below. |
 | `trello-cli cards get <id>` | Full card detail including custom fields. |
 | `trello-cli cards create --title "..." [--list X] [--label Y...] [--field K=V...]` | Create a card. Defaults to first open list. |
-| `trello-cli cards update <id> [--add-label X] [--remove-label Y] [--list Z] [--field K=V]` | Mutate labels, list, or custom fields. |
+| `trello-cli cards update <id> [--name X] [--description Y] [--add-label L] [--remove-label L] [--assign M...] [--unassign M...] [--list Z] [--field K=V]` | Mutate name, description, labels, members, list, or custom fields. Labels accept a name **or** a bare colour (e.g. `orange` → the board's unnamed orange category label). Members accept an id, username, or full name. |
 | `trello-cli cards comment <id> --body "..."` (or `--from-stdin`) | Add a comment. |
 | `trello-cli cards claim <id> [--worker-id <id>]` | Best-effort 4-step claim protocol (worker use). Worker-id defaults to `<hostname>:<pid>:<iso>`. |
 | `trello-cli cards release <id> --status <pr-opened\|stuck\|done> [--pr-url X] [--reason Y]` | Atomic state transition + clear `claimed-at` field + post status comment. |
+| `trello-cli cards archive <id>` / `trello-cli cards archive --list <name> [--dry-run]` | Archive one card, or every open card in a list. Recoverable from Trello's archive; use `--dry-run` to preview a bulk archive first. |
 
 ### Board
 
 | Command | Purpose |
 |---|---|
 | `trello-cli board summary` | Counts by list × label, excluding lists in `internal_lists` config. Useful for periodic summary jobs. |
+
+### Members
+
+| Command | Purpose |
+|---|---|
+| `trello-cli members list` | List board members (id, username, full name). Use it to find the value to pass to `cards update --assign`. |
 
 ### Watch (NDJSON streaming)
 
@@ -92,6 +99,20 @@ trello-cli cards list --label ww-ready --not-label intern-ok
 
 # Mark a card as having an open PR
 trello-cli cards release ABC123 --status pr-opened --pr-url https://github.com/x/y/pull/42
+
+# Rename a card, set its description, colour-label it, and assign someone
+trello-cli cards update ABC123 \
+  --name "Introduce annual plans" \
+  --description "Annual billing option alongside monthly." \
+  --add-label orange \
+  --assign rahulpawar
+
+# Who's on the board? (then feed a username/id to --assign)
+trello-cli members list --format table
+
+# Preview, then bulk-archive a finished column
+trello-cli cards archive --list "Done" --dry-run
+trello-cli cards archive --list "Done"
 
 # Capture an idea from a script
 echo "Add batch country export to csc-cli" \

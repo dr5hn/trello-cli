@@ -65,6 +65,33 @@ describe("CLI shell", () => {
     expect(out).toContain("comment");
     expect(out).toContain("claim");
     expect(out).toContain("release");
+    expect(out).toContain("archive");
+  });
+
+  test("`cards archive --help` shows --list and --dry-run options", async () => {
+    const { cap } = await run(["cards", "archive", "--help"]);
+    const out = cap.stdout.join("");
+    expect(out).toContain("--list");
+    expect(out).toContain("--dry-run");
+  });
+
+  test("`cards update --help` shows the new name/description/assign options", async () => {
+    const { cap } = await run(["cards", "update", "--help"]);
+    const out = cap.stdout.join("");
+    expect(out).toContain("--name");
+    expect(out).toContain("--description");
+    expect(out).toContain("--assign");
+    expect(out).toContain("--unassign");
+  });
+
+  test("--help lists the members command", async () => {
+    const { cap } = await run(["--help"]);
+    expect(cap.stdout.join("")).toContain("members");
+  });
+
+  test("`members --help` lists the list subcommand", async () => {
+    const { cap } = await run(["members", "--help"]);
+    expect(cap.stdout.join("")).toContain("list");
   });
 
   test("`cards list --help` shows --label, --not-label, --tier options", async () => {

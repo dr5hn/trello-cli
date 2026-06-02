@@ -14,7 +14,9 @@ import { updateCommand } from "./commands/cards/update.js";
 import { commentCommand } from "./commands/cards/comment.js";
 import { claimCommand } from "./commands/cards/claim.js";
 import { releaseCommand, type ReleaseStatus } from "./commands/cards/release.js";
+import { archiveCommand } from "./commands/cards/archive.js";
 import { summaryCommand } from "./commands/board.js";
+import { membersListCommand } from "./commands/members.js";
 import { watchCommand } from "./commands/watch.js";
 
 // Load version from package.json so we never drift between the two.
@@ -53,13 +55,17 @@ function renderHelp(): string {
     "  cards list [filters]                  List cards (--label, --not-label, --list, --repo, --mine, --stale-days)",
     "  cards get <id>                        Full card detail with custom fields",
     `  cards create --title "..."            Create a card`,
-    "  cards update <id> [...]               Mutate labels / list / custom fields",
+    "  cards update <id> [...]               Mutate name / desc / list / labels / members / fields",
     `  cards comment <id> --body "..."       Add a comment`,
     "  cards claim <id> [--worker-id <id>]   Best-effort 4-step claim (worker use)",
     "  cards release <id> --status <s>       State transition (pr-opened|stuck|done)",
+    "  cards archive [id] [--list <name>]    Archive a card, or all cards in a list (--dry-run)",
     "",
     pc.bold("Board:"),
     "  board summary                         Counts by list × label, excludes internal_lists",
+    "",
+    pc.bold("Members:"),
+    "  members list                          List board members (id, username, full name)",
     "",
     pc.bold("Watch:"),
     "  watch [--label X] [--interval 15m]    Long-poll, emit one NDJSON event per new card",
@@ -78,6 +84,9 @@ function renderHelp(): string {
     "  trello-cli cards list --label ww-ready --not-label intern-ok",
     `  trello-cli cards create --title "Fix homepage typo" --list "Todo"`,
     `  trello-cli cards comment ABC123 --body "PR opened: github.com/x/y/pull/42"`,
+    `  trello-cli cards archive --list "Done" --dry-run    # preview before bulk-archiving`,
+    `  trello-cli cards update ABC123 --assign rahulpawar --add-label orange --description "..."`,
+    "  trello-cli members list --format table",
     "  trello-cli board summary | jq '.totalCards'",
     "  trello-cli watch --label ww-ready --interval 5m | jq '.card.name'",
     "",
@@ -124,6 +133,7 @@ export function buildProgram(): Command {
   registerCards(program);
   registerLabels(program);
   registerBoard(program);
+  registerMembers(program);
   registerWatch(program);
 
   return program;
@@ -225,17 +235,25 @@ function registerCards(program: Command): void {
 
   cards
     .command("update <cardId>")
-    .description("Mutate labels, list, or custom fields on a card.")
-    .option("--add-label <name...>", "labels to add (repeatable)")
-    .option("--remove-label <name...>", "labels to remove (repeatable)")
+    .description("Mutate name, description, list, labels, members, or custom fields on a card.")
+    .option("--name <text>", "rename the card")
+    .option("--description <text>", "set the card description")
+    .option("--add-label <name...>", "labels to add — name or colour, e.g. orange (repeatable)")
+    .option("--remove-label <name...>", "labels to remove — name or colour (repeatable)")
+    .option("--assign <member...>", "assign members by id / username / full name (repeatable)")
+    .option("--unassign <member...>", "remove members by id / username / full name (repeatable)")
     .option("--list <name>", "move to this list")
     .option("--field <kv...>", "custom field as key=value (repeatable)")
     .action(async (cardId: string, cmdOpts: UpdateLikeOpts, cmd: Command) => {
       await updateCommand({
         cardId,
         format: globalFormat(cmd),
+        ...(cmdOpts.name !== undefined ? { name: cmdOpts.name } : {}),
+        ...(cmdOpts.description !== undefined ? { description: cmdOpts.description } : {}),
         ...(cmdOpts.addLabel !== undefined ? { addLabel: cmdOpts.addLabel } : {}),
         ...(cmdOpts.removeLabel !== undefined ? { removeLabel: cmdOpts.removeLabel } : {}),
+        ...(cmdOpts.assign !== undefined ? { assign: cmdOpts.assign } : {}),
+        ...(cmdOpts.unassign !== undefined ? { unassign: cmdOpts.unassign } : {}),
         ...(cmdOpts.list !== undefined ? { list: cmdOpts.list } : {}),
         ...(cmdOpts.field !== undefined ? { field: cmdOpts.field } : {}),
       });
@@ -292,6 +310,26 @@ function registerCards(program: Command): void {
         ...(cmdOpts.reason !== undefined ? { reason: cmdOpts.reason } : {}),
       });
     });
+
+  cards
+    .command("archive [cardId]")
+    .description("Archive a single card, or every open card in a list (--list).")
+    .option("--list <name>", "archive ALL open cards in this list")
+    .option("--dry-run", "report what would be archived without mutating", false)
+    .action(
+      async (
+        cardId: string | undefined,
+        cmdOpts: ArchiveLikeOpts,
+        cmd: Command,
+      ) => {
+        await archiveCommand({
+          format: globalFormat(cmd),
+          ...(cardId !== undefined ? { cardId } : {}),
+          ...(cmdOpts.list !== undefined ? { list: cmdOpts.list } : {}),
+          dryRun: cmdOpts.dryRun ?? false,
+        });
+      },
+    );
 }
 
 interface ListLikeOpts {
@@ -311,8 +349,12 @@ interface CreateLikeOpts {
   description?: string;
 }
 interface UpdateLikeOpts {
+  name?: string;
+  description?: string;
   addLabel?: string[];
   removeLabel?: string[];
+  assign?: string[];
+  unassign?: string[];
   list?: string;
   field?: string[];
 }
@@ -324,6 +366,10 @@ interface ReleaseLikeOpts {
   status: ReleaseStatus;
   prUrl?: string;
   reason?: string;
+}
+interface ArchiveLikeOpts {
+  list?: string;
+  dryRun?: boolean;
 }
 
 function globalFormat(cmd: Command): "json" | "table" {
@@ -355,6 +401,16 @@ function registerBoard(program: Command): void {
     .description("Counts by list × label × tier (excludes internal_lists from auth.json).")
     .action(async (_cmdOpts, cmd: Command) => {
       await summaryCommand({ format: globalFormat(cmd) });
+    });
+}
+
+function registerMembers(program: Command): void {
+  const members = program.command("members").description("Board member operations.");
+  members
+    .command("list")
+    .description("List members of the configured board (id, username, full name).")
+    .action(async (_cmdOpts, cmd: Command) => {
+      await membersListCommand({ format: globalFormat(cmd) });
     });
 }
 

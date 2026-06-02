@@ -165,6 +165,31 @@ describe("TrelloClient.request", () => {
     await expect(client.addCommentToCard("c1", "hello world")).resolves.toBeDefined();
   });
 
+  test("addMemberToCard POSTs memberId as value", async () => {
+    intercept()
+      .intercept({
+        method: "POST",
+        path: (p) =>
+          p.startsWith("/1/cards/c1/idMembers") && p.includes("value=m1"),
+      })
+      .reply(200, [{ id: "m1" }]);
+
+    const client = makeClient();
+    await expect(client.addMemberToCard("c1", "m1")).resolves.toBeDefined();
+  });
+
+  test("removeMemberFromCard DELETEs the member subresource", async () => {
+    intercept()
+      .intercept({
+        method: "DELETE",
+        path: (p) => p.startsWith("/1/cards/c1/idMembers/m1"),
+      })
+      .reply(200, []);
+
+    const client = makeClient();
+    await expect(client.removeMemberFromCard("c1", "m1")).resolves.toBeDefined();
+  });
+
   test("setCustomFieldText sends JSON body { value: { text } }", async () => {
     intercept()
       .intercept({

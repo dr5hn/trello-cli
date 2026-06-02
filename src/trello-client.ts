@@ -171,6 +171,14 @@ export class TrelloClient {
     return this.request("POST", `/cards/${cardId}/actions/comments`, { query: { text } });
   }
 
+  addMemberToCard(cardId: string, memberId: string): Promise<unknown> {
+    return this.request("POST", `/cards/${cardId}/idMembers`, { query: { value: memberId } });
+  }
+
+  removeMemberFromCard(cardId: string, memberId: string): Promise<unknown> {
+    return this.request("DELETE", `/cards/${cardId}/idMembers/${memberId}`);
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // Custom fields (used by claim/release for `claimed-at`, `repo`, etc.)
   // ─────────────────────────────────────────────────────────────────

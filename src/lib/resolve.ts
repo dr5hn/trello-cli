@@ -10,6 +10,7 @@ import {
   type TrelloLabel,
   type TrelloList,
   type TrelloCustomField,
+  type TrelloMember,
 } from "../trello-client.js";
 
 export class ResolutionError extends Error {
@@ -75,6 +76,94 @@ export function resolveLabelIds(
     const known = Array.from(labelMap.keys()).sort().join(", ");
     throw new ResolutionError(
       `Unknown label name(s): ${missing.join(", ")}. Known: ${known || "(none)"}`,
+    );
+  }
+  return ids;
+}
+
+/**
+ * Resolve label *references* — either an exact label name, or a bare colour
+ * token (e.g. "orange") that maps to the board's single UNNAMED label of that
+ * colour. Trello "category" labels are often left unnamed, so they can't be hit
+ * by name; selecting them by colour is the only ergonomic handle. Named labels
+ * always win over the colour fallback, so `ww-working` (orange) and the unnamed
+ * orange category label stay independently addressable.
+ *
+ * @throws ResolutionError for unknown tokens, a colour with no unnamed label,
+ *   or an ambiguous colour (more than one unnamed label sharing it).
+ */
+export function resolveLabelRefs(
+  tokens: ReadonlyArray<string>,
+  allLabels: ReadonlyArray<TrelloLabel>,
+): string[] {
+  const byName = new Map<string, TrelloLabel>();
+  for (const label of allLabels) {
+    if (label.name.length > 0) byName.set(label.name, label);
+  }
+
+  const ids: string[] = [];
+  const errors: string[] = [];
+  for (const token of tokens) {
+    const named = byName.get(token);
+    if (named) {
+      ids.push(named.id);
+      continue;
+    }
+    const unnamedOfColor = allLabels.filter(
+      (l) => l.name.length === 0 && l.color === token,
+    );
+    if (unnamedOfColor.length === 1) {
+      ids.push(unnamedOfColor[0]!.id);
+    } else if (unnamedOfColor.length > 1) {
+      errors.push(`"${token}" is ambiguous (${unnamedOfColor.length} unnamed labels share that colour)`);
+    } else {
+      errors.push(`"${token}"`);
+    }
+  }
+  if (errors.length > 0) {
+    const knownNames = Array.from(byName.keys()).sort();
+    const knownColors = Array.from(
+      new Set(allLabels.filter((l) => l.name.length === 0).map((l) => l.color)),
+    ).sort();
+    throw new ResolutionError(
+      `Could not resolve label(s): ${errors.join(", ")}. ` +
+        `Known names: ${knownNames.join(", ") || "(none)"}. ` +
+        `Known colours: ${knownColors.join(", ") || "(none)"}.`,
+    );
+  }
+  return ids;
+}
+
+/**
+ * Resolve member references to member IDs. Accepts a Trello member id,
+ * `username`, or `fullName` (case-insensitive) — whichever the user finds
+ * handy. Errors name every unknown token plus the known members so a typo is
+ * obvious.
+ */
+export function resolveMemberIds(
+  tokens: ReadonlyArray<string>,
+  members: ReadonlyArray<TrelloMember>,
+): string[] {
+  const ids: string[] = [];
+  const missing: string[] = [];
+  for (const token of tokens) {
+    const needle = token.toLowerCase();
+    const match = members.find(
+      (m) =>
+        m.id === token ||
+        m.username.toLowerCase() === needle ||
+        m.fullName.toLowerCase() === needle,
+    );
+    if (match) ids.push(match.id);
+    else missing.push(token);
+  }
+  if (missing.length > 0) {
+    const known = members
+      .map((m) => `${m.username} (${m.fullName})`)
+      .sort()
+      .join(", ");
+    throw new ResolutionError(
+      `Unknown member(s): ${missing.join(", ")}. Known: ${known || "(none)"}`,
     );
   }
   return ids;

@@ -6,6 +6,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-06-02
+
+### Added
+
+- **`trello-cli cards archive`** — archive a single card (`cards archive <id>`) or every open card in a list (`cards archive --list "Done"`). Includes `--dry-run` to preview which cards would be archived before mutating — important for bulk archives, which are recoverable in Trello but tedious to un-archive by hand.
+
+- **`trello-cli members list`** — list the board's members (id, username, full name). Mainly a discovery aid: feeds the value you pass to `cards update --assign`.
+
+- **`cards update --name <text>`** — rename a card. Closes the long-standing gap where a typo in a card title could only be fixed in Trello's UI.
+
+- **`cards update --description <text>`** — set/replace a card's description. Previously the CLI could only set a description at `create` time.
+
+- **`cards update --assign <member>...`** and **`--unassign <member>...`** — assign or remove board members on a card. Members resolve by Trello id, username, or full name (case-insensitive), so `--assign rahulpawar` and `--assign "Rahul Pawar"` both work.
+
+- **Colour-based label references** — `cards update --add-label`/`--remove-label` now accept either an exact label name *or* a bare colour token (e.g. `orange`). The colour resolves to the board's single unnamed label of that colour, which is how unnamed "category" labels become addressable from the CLI. Named labels still win over the colour fallback, so e.g. `ww-working` (orange) and the unnamed orange category label stay independently addressable. Ambiguous colours (more than one unnamed label sharing a colour) and unknown tokens raise a clear `ResolutionError`.
+
+### Changed
+
+- **`cards update <id>` is now the do-everything card mutator.** Its help and description reflect the broader scope (name / description / list / labels / members / fields). Existing flags (`--add-label`, `--remove-label`, `--list`, `--field`) are unchanged.
+
+- **Top-level help (`trello-cli --help`)** gains a Members section, a new examples line for the extended `cards update`, and the previously-undocumented `cards archive` row.
+
+- **README** is back in sync with the CLI: the Cards table documents `archive`, the `update` row lists the new flags, and a Members section + new examples cover the new commands.
+
+### Internal
+
+- New client methods `addMemberToCard(cardId, memberId)` and `removeMemberFromCard(cardId, memberId)`, mirroring the label helpers.
+
+- New resolvers in `src/lib/resolve.ts`: `resolveMemberIds(tokens, members)` and `resolveLabelRefs(tokens, allLabels)` (name → unnamed-colour fallback). Existing `resolveLabelIds` retained for callers that only need name resolution.
+
+- Test count: 144 (up from 126), including dedicated `archive.test.ts`, `members.test.ts`, `update.test.ts`, plus new cases in `trello-client.test.ts`, `resolve.test.ts`, and `cli.test.ts`.
+
 ## [0.1.1] — 2026-04-18
 
 ### Added
